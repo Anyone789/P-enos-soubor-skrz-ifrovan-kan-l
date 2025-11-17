@@ -1,14 +1,20 @@
+/**
+ * @file main.c
+ * @author Tomáš Hrbáč (xhrbact00)
+ * Last edit: 17.11.2025
+ *
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "../include/secret.h"
 
-/* Forward declarations from client/server modules */
+/* Declarations from client/server modules */
 int client_run(const char *file_path, const char *server_host);
 int server_run(void);
 
-/* Simple CLI: -r <file> -s <host> | -l */
+/* Simple CLI: ./secret -r <file> -s <ip|hostname> [-l] */
 int main(int argc, char **argv) {
     int opt;
     char *file = NULL;

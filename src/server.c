@@ -1,3 +1,9 @@
+/**
+ * @file server.c
+ * @author Tomáš Hrbáč (xhrbact00)
+ * Last edit: 17.11.2025
+ *
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,8 +17,7 @@
 
 int read_frame(int sockfd, uint8_t *out_type, void **out_body, uint32_t *out_body_len);
 int write_frame(int sockfd, uint8_t type, const void *body, uint32_t body_len);
-int derive_key_from_passphrase(const char *passphrase, const unsigned char *salt, int salt_len,
-                               unsigned char *out_key);
+int derive_key_from(unsigned char *out_key);
 int aes_gcm_decrypt(const unsigned char *key, const unsigned char *iv, int iv_len,
                     const unsigned char *ciphertext, int ciphertext_len,
                     const unsigned char *tag, unsigned char *plaintext);
@@ -24,9 +29,6 @@ static void *worker(void *arg) {
     FILE *outf = NULL;
     unsigned char tmpname[512];
     unsigned char username[256];
-    unsigned char salt[16];
-    uint32_t chunk_size = DEFAULT_CHUNK_SIZE;
-    uint64_t filesize = 0;
     unsigned char expected_hash[32];
     unsigned char computed_hash[32];
     SHA256_CTX shactx;
@@ -34,26 +36,21 @@ static void *worker(void *arg) {
     if (read_frame(client, &rtype, &rbody, &rlen) != 0) goto cleanup;
     if (rtype != FT_HELLO) goto cleanup;
     unsigned char *p = rbody;
-    int salt_len = *p; p++;
-    if (salt_len != 16) goto cleanup;
-    memcpy(salt, p, salt_len); p += salt_len;
     int uname_len = *p; p++;
     memcpy(username, p, uname_len); username[uname_len] = '\0'; p += uname_len;
     uint16_t fname_len = ntohs(*(uint16_t*)p); p += 2;
     char filename[MAX_FILENAME_LEN+1];
     memcpy(filename, p, fname_len); filename[fname_len] = '\0'; p += fname_len;
-    filesize = be64toh(*(uint64_t*)p); p += 8;
-    chunk_size = ntohl(*(uint32_t*)p); p += 4;
 
     /* derive key */
-    if (derive_key_from_passphrase((const char*)username, salt, salt_len, key) != 0) {
-        /* send HELLO_ACK with error */
+    if (derive_key_from(key) != 0) {
+        /* send nok HELLO_ACK */
         unsigned char err[1] = {1};
         write_frame(client, FT_HELLO_ACK, err, 1);
         goto cleanup;
     }
 
-    /* send HELLO_ACK OK */
+    /* send OK HELLO_ACK */
     unsigned char ok[1] = {0};
     write_frame(client, FT_HELLO_ACK, ok, 1);
 
@@ -126,8 +123,16 @@ int server_run(void) {
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(DEFAULT_PORT);
-    if (bind(sfd, (struct sockaddr*)&addr, sizeof(addr)) != 0) { perror("bind"); close(sfd); return 1; }
-    if (listen(sfd, 5) != 0) { perror("listen"); close(sfd); return 1; }
+    if (bind(sfd, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
+        perror("bind"); 
+        close(sfd);
+        return 1;
+    }
+    if (listen(sfd, 5) != 0) {
+        perror("listen");
+        close(sfd);
+        return 1;
+    }
     log_info("server listening on port %d", DEFAULT_PORT);
     while (1) {
         cfd = accept(sfd, NULL, NULL);
