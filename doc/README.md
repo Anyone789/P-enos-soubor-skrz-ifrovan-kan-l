@@ -1,4 +1,4 @@
-# secret — README (skeleton)
+# README
 
 Build:
 ```
@@ -16,6 +16,5 @@ Run client (send file):
 ```
 
 Notes:
-- Tento skeleton neobsahuje plnou implementaci; slouží jako výchozí bod.
 - Crypto: použij OpenSSL EVP API. Doporučeno AES-256-GCM + PBKDF2-HMAC-SHA256.
-- Protokol: viz `doc/protocol.md` pro přesnou binární specifikaci rámců.
+- Protokol: viz `doc/manual.pdf` pro přesnou binární specifikaci rámců.
